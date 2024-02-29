@@ -20,7 +20,7 @@ ifelse(!dir.exists(file.path(here('Outputs/'))), dir.create(file.path(here('Outp
 
 # Create sub folders if not present
 
-data_subfolders <- c('CSVs')
+data_subfolders <- c('CSVs') # Creates one raw data sub-folder - if any more are desired they can just be added to this vector
 
 
 lapply(data_subfolders, function(i){
