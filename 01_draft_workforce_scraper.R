@@ -86,13 +86,11 @@ months_links_df <- cbind(months_links_df, month_present_in_files) %>%        # C
 
 scrape_download_function <- function(i){
   
-  i<-months_links_df
-
-  month <- months_links_df$names_only # Isolate month of interest
+  month <- months_links_df$names_only[[i]]  # Isolate month of interest
   
-  date <- months_links_df$dates_as_characters # Isolate month name as format featured in CSV names/links
+  date <- months_links_df$dates_as_characters[[i]] # Isolate month name as format featured in CSV names/links
   
-  subpage_link <- months_links_df$links # Isolate relevant subpage link for our month 
+  subpage_link <- months_links_df$links[[i]] # Isolate relevant subpage link for our month 
   
   
   # Find all nhsd-a-box-link nodes on our subpage and isolate those linking to the individual-level zip files
