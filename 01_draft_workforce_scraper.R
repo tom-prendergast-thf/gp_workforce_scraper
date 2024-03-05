@@ -20,12 +20,14 @@ ifelse(!dir.exists(file.path(here('Outputs/'))), dir.create(file.path(here('Outp
 
 # Create sub folders if not present
 
-data_subfolders <- c('CSVs') # Creates one raw data sub-folder - if any more are desired they can just be added to this vector
+data_subfolders <- c('CSVs', 'CSVs/update') # Creates one raw data sub-folder - if any more are desired they can just be added to this vector
 
 
 lapply(data_subfolders, function(i){
   ifelse(!dir.exists(file.path(here('Raw_data/', i))), dir.create(file.path(here('Raw_data/', i))), print('Directory already exists'))
 })
+
+
 
 ################################################
 ######## SCRAPE AND DOWNLOAD LATEST DATA #######
@@ -65,7 +67,7 @@ months_links_df <- cbind(monthly_names, monthly_links) %>%              # Create
 
 
 
-## Compare the list of available data to the data we alread,y have in our directory
+## Compare the list of available data to the data we already have in our directory
 
 checklist_files <- lapply(1:nrow(months_links_df), function(i){                      # Check for monthly files in our raw data directory
   file.exists(paste0('Raw_data/CSVs/', months_links_df$names_only[[i]], '.csv'))
@@ -83,12 +85,14 @@ months_links_df <- cbind(months_links_df, month_present_in_files) %>%        # C
 # Any cases where the csv/dataset page links we're after can't be found or the zips contain more than one CSV are flagged when this function is run.
 
 scrape_download_function <- function(i){
+  
+  i<-months_links_df
 
-  month <- months_links_df$names_only[[i]]  # Isolate month of interest
+  month <- months_links_df$names_only # Isolate month of interest
   
-  date <- months_links_df$dates_as_characters[[i]] # Isolate month name as format featured in CSV names/links
+  date <- months_links_df$dates_as_characters # Isolate month name as format featured in CSV names/links
   
-  subpage_link <- months_links_df$links[[i]] # Isolate relevant subpage link for our month 
+  subpage_link <- months_links_df$links # Isolate relevant subpage link for our month 
   
   
   # Find all nhsd-a-box-link nodes on our subpage and isolate those linking to the individual-level zip files
@@ -103,7 +107,7 @@ scrape_download_function <- function(i){
   
   if (length(datasets_link) != 1){
     
-    print(paste0('Warning: check ', month))   # Tells us if there's more than one link picked up by the function so far - there should only be one 
+    print(paste0('Warning more than one link picked up by function: check ', month))   # Tells us if there's more than one link picked up by the function so far - there should only be one 
     
   }else{
     
@@ -118,8 +122,42 @@ scrape_download_function <- function(i){
     
     temp_dir <- tempdir()
     
-    if (nrow(zip_csvs)!= 1){ print(paste0('Warning: check zip for ', month)) # Stops the function and warns us if there's more than one csv in the zip - in a normal month there's only one 
-    }else{ unzip(temp, exdir = temp_dir)
+    if (nrow(zip_csvs)!= 1){ print(paste0('Warning more than one csv in the zip: check zip for ', month)) #  warns us if there's more than one csv in the zip - in a normal month there's only one 
+    
+      
+      unzip(temp, exdir = temp_dir)
+      
+      files <- list.files(temp_dir, full.names = TRUE)
+      
+      # Filter only CSV files
+      csv_files <- files[grep("\\.csv$", files)]
+      
+      for (file in csv_files) {
+        # Extract the file name
+        
+        file_name <- basename(file)
+        
+        # Extract the month, day, and year from the file name
+        
+        file_info <- strsplit(file_name, " – ")[[1]]
+        
+        month_year <- file_info[length(file_info)]
+        
+        # Parse the month and year
+        date <- lubridate::dmy(paste0("1-", month_year))
+        
+        # Determine the last day of the month
+        last_day <- lubridate::ceiling_date(date, "month") - 1
+        
+        # Format the date as desired
+        new_file_name <- paste0(format(last_day, "%d-%B-%Y"), ".csv")
+        
+        # Move the file to the destination directory with the new name
+        file.rename(file, paste0('Raw_data/CSVs/update/', tolower(new_file_name)))
+      }
+      
+        
+      }else{ unzip(temp, exdir = temp_dir)
       
       file.rename(paste0(temp_dir, '/', zip_csvs$Name[[1]]), paste0('Raw_data/CSVs/', month, '.csv'))
     }
@@ -132,4 +170,44 @@ scrape_download_function <- function(i){
 if(nrow(months_links_df >= 1)){
   lapply(1:nrow(months_links_df), scrape_download_function)     # Feed all undownloaded files available on the NHSD page into the scraping and download function
 }
+
+
+
+
+
+#the July data is it at ICB level so better to have that so everything is the same 
+
+
+
+# Function to replace files in folder 1 with files from folder 2 if they match
+original_folder<-paste0('Raw_data/CSVs')
+update_folder<-paste0('Raw_data/CSVs/update')
+
+
+original_list<-list.files(original_folder, full.names=TRUE)
+update_list <- list.files(update_folder, full.names = TRUE)
+  
+  # Compare file names in original and update
+
+common_files <- intersect(basename(original_list), basename(update_list))
+  
+  # Replace files in original with files from update if they match
+  for (file in common_files) {
+    file1_path <- file.path(original_folder, file)
+    file2_path <- file.path(update_folder, file)
+    file.rename(file2_path, file1_path)
+  }
+
+  
+unique_files <- setdiff(basename(update_list), basename(original_list))
+
+#Add the files in update that are not in original folder 
+for (file in unique_files) {
+  file1_path <- file.path(original_folder, file)
+  file2_path <- file.path(update_folder, file)
+  file.copy(file2_path, file1_path)}
+
+
+
+
 
